@@ -1,0 +1,134 @@
+#include <coleco.h>
+#include <getput1.h>
+#include "fonctions.h"
+
+
+#define INACTIF     204
+#define INVISIBLE   203
+
+#define HORIZONTAL  0
+#define VERTICAL    1
+
+
+#define WORKFLOW_TITLE      0
+#define WORKFLOW_MENU       1
+#define WORKFLOW_INGAME     2
+#define WORKFLOW_LOOSE_LIFE 3
+#define WORKFLOW_GAMEOVER   4
+
+extern const byte LEVEL_NAMERLE[];
+extern const byte LEVEL_PATTERNRLE[];
+extern const byte LEVEL_COLORRLE[];
+extern const byte SPATTERNRLE[];
+
+const byte corps_up={120,122,121,123};
+const byte corps_down={128,130,129,131};
+const byte corps_left={136,138,137,139};
+const byte corps_right={144,146,145,147};
+
+/*
+      1
+     4+3
+      2
+*/
+
+byte workflow;
+byte ticks;
+char direction = '3';
+char dirx;
+char diry;
+byte grossit;
+
+void main(void)
+{
+    byte xt,yt;
+    byte xq,yq;
+    char nq;
+    char a;
+    byte nx,ny;
+
+    workflow = WORKFLOW_TITLE;
+
+    xt=10;
+    yt=10;
+    xq=6;
+    yq=10;
+    while(1)
+    {
+        switch(workflow)
+        {
+        case WORKFLOW_TITLE:
+            SCREEN_OFF
+            initSprites();
+            screen_mode_2_text();
+            rle2vram(SPATTERNRLE,sprtab);
+            LoadPatternAndshowAScreen(LEVEL_PATTERNRLE,LEVEL_COLORRLE,LEVEL_NAMERLE,1,chrtab);
+            put_char(xt,yt,'3');
+            put_char(xt-1,yt,'3');
+            put_char(xt-2,yt,'3');
+            put_char(xt-3,yt,'3');
+            put_char(xt-4,yt,'3');
+            put_char(15,15,'O');
+            grossit=0;
+            direction='3';
+            dirx=1;
+            diry=0;
+            SCREEN_ON
+            workflow = WORKFLOW_MENU;
+            break;
+        case WORKFLOW_MENU:
+            workflow = WORKFLOW_INGAME;
+            break;
+        case WORKFLOW_INGAME:
+            if ((joypad_1&LEFT) && (dirx==0)){direction='4';dirx=-1;diry=0;}
+            else
+            if ((joypad_1&RIGHT) && (dirx==0)) {direction='3';dirx=1;diry=0;}
+            else
+            if ((joypad_1&UP) && (diry==0)) {direction='1';dirx=0;diry=-1;}
+            else
+            if ((joypad_1&DOWN) && (diry==0)) {direction='2';dirx=0;diry=1;}
+            delay(5);
+            a = get_char(xt,yt);
+            if (a=='O') {
+                grossit=1;
+                nx = rnd_byte(5,25);
+                ny = rnd_byte(4,20);
+                delay(1);
+                a = get_char(nx,ny);
+                while (a!=32)
+                {
+                    nx = rnd_byte(5,25);
+                    ny = rnd_byte(4,20);
+                    delay(1);
+                    a = get_char(nx,ny);
+                }
+                put_char(nx,ny,'O');
+            }
+            put_char(xt,yt,direction);
+            xt = xt + dirx;
+            yt = yt + diry;
+
+
+            nq = get_char(xq,yq);
+            if (grossit==0)
+            {
+                put_char(xq,yq,' ');
+                /* On doit déterminer le prochain caractère à éteindre ... */
+                if (nq=='1') yq--;
+                if (nq=='2') yq++;
+                if (nq=='4') xq--;
+                if (nq=='3') xq++;
+            } else grossit--;
+
+            break;
+        case WORKFLOW_GAMEOVER:
+            break;
+
+        }
+    }
+}
+
+void nmi(void)
+{
+        ++ticks;
+}
